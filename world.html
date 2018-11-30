@@ -1,0 +1,375 @@
+<html>
+  <head>
+    <title> Ghost Fighter </title>
+     <style>
+      .plat { background: green; position: absolute; border-radius: 8px; border: solid grey 2px;}
+      .wind { background: #ddd; position: absolute; border-radius: 20px; opacity: 0.3}
+      .coin { background: gold; position: absolute; border-radius: 40px; border: solid brown 2px; width: 30px; height: 30px; opacity: 0.3}
+      .defeated { width: 0px !important; height: 0px !important; transition: 3s; }
+    </style>
+  </head>
+<body>
+  <div id="bg" style="width:8000px; height:1000px; background:white; border:2px solid black; margin: 2px;">
+    <img id="player1" class="solid player" src="" style="position:absolute;" width=56 height=56>
+    <img id="enemy1" class="solid enemy" src="" style="position:absolute; left:1100px; top:250px"width=80 height=80>
+    <img id="enemy2" class="solid enemy" src="" style="position:absolute; left:2800px; top:250px"width=40px height=40px>
+    <img id="enemy3" class="solid enemy" src="" style="position:absolute; left:2800px; top:250px"width=40px height=40px>
+    <img id="enemy4" class="solid enemy" src="" style="position:absolute; left: 3700px; top: 600px"width=23px height=21px>
+    <div class="plat solid" style="top:330px; left:250px; width:300px; height:30px;"></div>
+    <div class="plat solid" style="top:350px; left:600px; width:160px; height:30px;"></div>
+    <div class="plat solid" style="top:450px; left:900px; width:400px; height:30px;"></div>
+    <div class="plat solid" style="top:210px; left:1800px; width:400px; height:30px;"></div>
+    <div class="plat solid" style="top:450px; left:2400px; width:900px; height:30px;"></div>
+    <div class="plat solid" style="top:250px; left:2400px; width:30px; height:200px;"></div>
+    <div class="plat solid" style="top:250px; left:6300px; width:400px; height:20px;"></div>
+    <div class="plat solid" style="top:250px; left:5600px; width:300px; height:20px;"></div>
+    <div class="plat solid" style="top:250px; left:4900px; width:30px; height:200px;"></div>
+    <div class="plat solid" style="top:250px; left:7200px; width:30px; height:300px;"></div>
+    <div class="plat solid" style="top:250px; left:3700px; width:400px; height:20px;"></div>
+    
+    <div class="coin" style="top:180px; left:400px;"></div>
+    <div class="coin" style="top:200px; left:2400px;"></div>
+    <div class="coin" style="top:950px; left:7900px;"></div>
+  </div> <!-- end bg -->
+  
+  <p id="player1_debug"></p>
+  <p id="enemy1_debug"></p>
+  <p id="enemy2_debug"></p>
+  <p id="enemy3_debug"></p>
+  <p id="enemy4_debug"></p>
+  
+  <script>
+        let allSprites = [];
+        class Sprite {
+          constructor(x, y, image_id) {
+            this.x = x; 
+            this.y = y;
+            this.id = image_id;
+            this.element = document.getElementById(image_id);
+            this.element.sprite = this;
+            this.width = this.element.offsetWidth;
+            this.height = this.element.offsetHeight;
+            this.dx = 0;
+            this.dy = 0;
+            this.facing = 1;
+            this.ax = 0;
+            this.ay = 0;
+            this.state = "starting";
+            this.command = "wait";
+            this.gold = 0;
+            this.hp = 100;  
+            this.damage = 1;
+            this.knockback = 1;
+            //factor?
+            allSprites.push(this);
+          }          
+          
+          decideAction() {
+            console.log("Object does not override decideAction " + this);
+          }
+          
+          displayAction() {
+            // In the base class, this does nothing,
+          }
+        }
+        
+        class Player extends Sprite {
+          decideAction() {
+            if (this.command == "go left") {
+              console.log("left");
+              this.dx -= 1;
+              this.facing = -1;
+              this.element.style.transform = "scaleX(1)";
+            } else if (this.command == "go right") {
+              console.log("right");
+              this.dx += 1;
+              this.facing = 1;
+              this.element.style.transform = "scaleX(-1)";
+            } else if (this.command == "jump" && this.dy > -1 && this.dy < 1) {
+              console.log("up");
+              this.dy -= 15;
+              this.state = "jump!";
+            } else if (this.command == "jump") {
+               // Tried to jump but can't right now.
+            } else if (this.command == "attack" && this.state != "attacking") {
+              this.element.src = "";
+              window.setTimeout(function () { player1.element.src = "";  }, 50);
+              window.setTimeout(function () { player1.element.src = ""; player1.states = "normal"; }, 100);
+              window.setTimeout(function () { player1.element.src = ""; player1.states = "normal"; }, 150);
+              window.setTimeout(function () { player1.element.src = ""; player1.states = "normal"; }, 200);
+              let victim_el = collision(this.x + this.width +5, this.y + this.height/2, this, "enemy",5 ,5);
+              if (this.facing == -1) {
+                victim_el = collision(this.x - 10, this.y + this.height/2, this, "enemy", 5 ,5);
+              }
+              if (victim_el) { 
+                let victim = victim_el.sprite;
+                victim.hp -= this.damage;
+                victim.dx += this.knockback * this.facing;
+              }
+              this.state = "attacking";
+            } else if (this.command == "wait") {
+              // Do nothing, and don't log it as an unknown command.
+            } else {
+              console.log("unknown command: " + this.command)
+            }
+          }  // end decideAction
+        }
+        class Enemy extends Sprite {
+          decideAction() {
+            if (Math.random() < 0.1 && this.dy > -1 && this.dy < 1) {
+              this.dy -= 15;
+              this.state = "jump!";
+            } else if (this.x > player1.x + player1.width + 3) {
+              this.dx = -4;
+              this.facing = -1;
+              this.element.style.transform = "scaleX(1)";
+            } else if (this.x + this.width < player1.x - 3) {
+              this.dx = 4;
+              this.facing = 1;
+              this.element.style.transform = "scaleX(-1)";
+            } else {
+              console.log ("attack player")
+              let victim_el = collision(this.x + this.width +5, this.y + this.height/2, this, "player",5 ,5);
+              if (this.facing == -1) {
+                victim_el = collision(this.x - 10, this.y + this.height/2, this, "player", 5 ,5);
+              }
+              if (victim_el) { 
+                let victim = victim_el.sprite;
+                victim.hp -= this.damage;
+                victim.dx += this.knockback * this.facing;
+              }
+              this.state = "attacking";
+            }
+          }
+        }
+        
+        class Dasher extends Sprite {
+          ///to be added
+        }
+    
+        let player1 = new Player(100, 100, "player1");
+        player1.damage = 10;
+        player1.knockback = 15;
+        let enemy1 = new Enemy(900, 100, "enemy1");
+        let enemy2 = new Enemy(1500, 100, "enemy2");
+        let enemy3 = new Enemy(1000, 100, "enemy3");
+        let enemy4 = new Enemy(3700, 60, "enemy4");
+        enemy1.hp = 50;
+        enemy2.hp = 50;
+        enemy3.hp = 50;
+        enemy4.hp = 50;
+    
+        let LEFT_KEY = 37;
+        let UP_KEY = 38;
+        let RIGHT_KEY = 39;
+        let DOWN_KEY = 40;
+        document.addEventListener("keydown", function(e) {
+         //possible to remove to prevent moving & scrolling at the same time?
+          if (e.keyCode == LEFT_KEY) {
+            console.log("left");
+            player1.command = "go left";
+            alert ("Welcome to the tutorial! First of all, please do not use the arrow keys to move. You should use the WASD keys, W to go up, A to go left, D to go right, and S does not do anything. The attack key is the K key. If you have any questions or feedback, please go to our online survey on Google Classroom and post it. Thx");
+          } else if (e.keyCode == RIGHT_KEY) {
+            console.log("right");
+            player1.command = "go right";
+            alert ("Welcome to the tutorial! First of all, please do not use the arrow keys to move. You should use the WASD keys, W to go up, A to go left, D to go right, and S does not do anything. The attack key is the K key. If you have any questions or feedback, please go to our online survey on Google Classroom and post it. Thx");
+          } else if (e.keyCode == UP_KEY && player1.dy > -1 && player1.dy < 1) {
+            console.log("up");
+            player1.command = "jump";
+            alert ("Welcome to the tutorial! First of all, please do not use the arrow keys to move. You should use the WASD keys, W to go up, A to go left, D to go right, and S does not do anything. The attack key is the K key. If you have any questions or feedback, please go to our online survey on Google Classroom and post it. Thx");
+          }
+          if (e.key == "a") {
+            console.log("a");
+            player1.command = "go left";
+          } else if (e.key == "d") {
+            console.log("d");
+            player1.command = "go right";
+          } else if ((e.key == "w") && player1.dy > -1 && player1.dy < 1) {
+            console.log("w");
+            player1.command = "jump";
+          } else if (e.key == "k") {
+            console.log("attack");
+            player1.command = "attack";
+          } else if (e.key == "j") {
+            console.log("attackLeft");
+            player1.command = "attackLeft";
+          } else if (e.key == "l") {
+            console.log("attackRight");
+            player1.command = "attackRight";
+          } 
+        });
+    
+                                  
+        document.addEventListener("keyup", function(e) {
+          if (e.keyCode == LEFT_KEY) {
+            player1.command = "wait";
+          } else if (e.keyCode == RIGHT_KEY) {
+            player1.command = "wait";
+          } else if (e.keyCode == UP_KEY) {
+            player1.command = "wait";
+          }
+          if (e.key == "a") {
+            player1.command = "wait";
+          } else if (e.key == "d") {
+            player1.command = "wait";
+          } else if (e.key == "w") {
+            player1.command = "wait";
+          } else if (e.key == " ") {
+            player1.command = "wait"; 
+          }
+        });
+        
+        setInterval (function () {
+          for (let i = 0; i < allSprites.length; i++) {
+            playTurn(allSprites[i]);
+          }
+        }, 50);
+        
+        let bg = document.getElementById('bg');
+        let bgTop = bg.offsetTop +2;
+        let bgLeft = bg.offsetLeft +2;
+        let bgBottom = bgTop + bg.offsetHeight -4;
+        let bgRight = bgLeft + bg.offsetWidth -4;
+        document.body.scrollLeft = 0;
+    
+    
+        function playTurn(player) {
+          if (player.hp <= 0) {
+          /// change to defeated image
+            player.element.className = 'defeated';
+            window.setTimeout(function () {
+               player.element.className = 'solid enemy';
+               player.hp = 100;
+            }, 6000);
+          } else { 
+            player.decideAction();
+          }
+          let newx = player.x;
+          let newy = player.y;
+          let margin = 10;
+          if (player.y + player.height + player.dy > bgBottom) {
+            player.dy = 0;
+            player.ay = 0;
+            newy = bgBottom - player.height;
+            player.state = "hit floor";
+          } else if (player.y - margin + player.dy < bgTop) {
+            player.dy = 1;
+            player.ay = 0;
+            newy = bgTop + margin + 1;
+            player.state = "hit ceiling";
+          } else {
+            newy = player.y + player.dy;
+          }
+          
+          if (player.x - margin + player.width + player.dx > bgRight) {
+            player.dx = 0;
+            player.ax = 0;
+            newx = bgRight + margin - player.width;
+            player.state = "hit right side";
+          } else if (player.x + margin + player.dx < bgLeft) {
+            player.dx = 0;
+            player.ax = 0;
+            newx = bgLeft - margin;
+            player.state = "hit left side";
+          } else {
+            newx = player.x + player.dx;
+          }
+          if (collision(player.x, player.y, player, "wind")) {
+              player.dx -= 1;
+          }
+          newx = newx + player.dx;
+          if (!collision(newx, newy, player) 
+              /* || collision(player.x, player.y, player_img) */
+             ) {
+            player.y = newy;
+            player.x = newx;
+            player.state = "floating";
+          } else  if (!collision((player.x + 3 * newx)/4, (player.y + 3 * newy)/4, player)) {
+            player.y = (3 * player.y + newy)/4;
+            player.x = (3 * player.x + newx)/4;
+            player.state = "floating";
+          } else  if (!collision((player.x + newx)/2, (player.y + newy)/2, player)) {
+            player.y = (player.y + newy)/2;
+            player.x = (player.x + newx)/2;
+            player.state = "floating";
+          } else  if (!collision((3 * player.x + newx)/4, (3 * player.y + newy)/4, player)) {
+            player.y = (3 * player.y + newy)/4;
+            player.x = (3 * player.x + newx)/4;
+            player.state = "floating";
+          } else if (!collision(newx, player.y, player)) {
+            player.x = newx;
+            player.dy = 0;
+            player.ay = 0;
+            player.state = "skating";
+          } else if (!collision(player.x, newy, player)) {
+            player.y = newy;
+            player.dx = 0;
+            player.ax = 0;
+            player.state = "falling straight down";
+          } else {
+            player.dx = 0;
+            player.ax = 0;
+            player.dy = 0;
+            player.ay = 0;
+            state = "blocked";
+          }
+          
+          if (player ==  player1) {
+            let playerScreenx = player.x - document.body.scrollLeft;
+            if (playerScreenx < 100) {
+              document.body.scrollLeft -= 25;
+            } else if (playerScreenx > 1000) {
+              document.body.scrollLeft += 25;
+            }
+          }
+          
+          player.element.style.left = player.x + "px";
+          player.element.style.top = player.y + "px";
+          player.displayAction();
+          let debug = document.getElementById(player.id + "_debug");
+          debug.innerText = player.state + " gold: " + player.gold + " hp: " + player.hp + " (" + Math.floor(player.x) + ", " + Math.floor(player.y) + ") + (" + Math.floor(player.dx * 100) / 100 + ", " + Math.floor(player.dy * 100) / 100 + ")";
+          player.dx = (player.dx + player.ax) * 0.9;
+          player.dy = (player.dy + player.ay) * 0.9;
+          player.ay = player.ay + 0.05;
+          
+          let touched_coin = collision(player.x, player.y, player, "coin");
+          if (touched_coin) {
+              player.gold += 1;
+              touched_coin.parentNode.removeChild(touched_coin);
+          }
+        }      
+        
+        function collision(x, y, myself, opt_className, opt_width, opt_height) {
+          let width = opt_width || myself.width;
+          let height = opt_height || myself.height;
+          let solids = document.getElementsByClassName(opt_className || "solid");
+          for (let i = 0; i < solids.length; i++) {
+            let solid = solids[i];
+            if (solid != myself.element &&
+                overlaps(x, y, width, height, 
+                         solid.offsetTop, solid.offsetLeft, solid.offsetWidth, solid.offsetHeight)) {
+             return solid; 
+            }
+          }
+          return false;
+        }
+        
+        function overlaps(x, y, w, h, top, left, width, height) {
+          let r = x + w;
+          
+          let right = left + width;
+          
+          let x_overlaps = (x >= left && x <= right ||
+                            r >= left && r <= right ||
+                            x < left && r > right);
+          if (! x_overlaps) return false;
+          let bottom = top + height;
+          let b = y + h;
+          let y_overlaps = (y >= top && y <= bottom ||
+                            b >= top && b <= bottom ||
+                            y < top && b > bottom);
+          return y_overlaps;
+        }
+    </script>
+</body>
+</html>
